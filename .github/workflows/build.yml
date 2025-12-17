@@ -12,10 +12,10 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
@@ -29,7 +29,7 @@ jobs:
         pyinstaller --onefile --windowed --name=EdafDesk --noconsole main.py
     
     - name: Upload Windows Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: EdafDesk-Windows
         path: dist/EdafDesk.exe
@@ -38,10 +38,10 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
@@ -64,13 +64,13 @@ jobs:
         hdiutil create -volname "EdafDesk" -srcfolder dmg_temp -ov -format UDZO EdafDesk.dmg
     
     - name: Upload macOS DMG
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: EdafDesk-macOS
         path: EdafDesk.dmg
     
     - name: Upload macOS App
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: EdafDesk-macOS-App
         path: dist/EdafDesk.app
