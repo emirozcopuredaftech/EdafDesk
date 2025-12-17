@@ -3,7 +3,7 @@ GUI Arayüzü - Ana Pencere
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox, scrolledtext, simpledialog
 import threading
 import socket
 from config import *
@@ -353,8 +353,7 @@ class RemoteDesktopGUI:
             return
         
         # İsim sor
-        import tkinter.simpledialog
-        name = tkinter.simpledialog.askstring(
+        name = simpledialog.askstring(
             "Favori İsmi",
             f"Bu bağlantı için bir isim girin:\n{ip}:{port}",
             initialvalue=f"Bağlantı {ip}"
