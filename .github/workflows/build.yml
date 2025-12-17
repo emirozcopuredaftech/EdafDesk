@@ -1,0 +1,76 @@
+name: Build EdafDesk for Windows and Mac
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install Pillow pynput pyinstaller
+    
+    - name: Build Windows EXE
+      run: |
+        pyinstaller --onefile --windowed --name=EdafDesk --noconsole main.py
+    
+    - name: Upload Windows Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: EdafDesk-Windows
+        path: dist/EdafDesk.exe
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install Pillow pynput pyinstaller
+    
+    - name: Build macOS App
+      run: |
+        pyinstaller --onefile --windowed --name=EdafDesk --noconsole main.py
+    
+    - name: Create DMG
+      run: |
+        # Create a temporary directory for DMG contents
+        mkdir -p dmg_temp
+        cp -r dist/EdafDesk.app dmg_temp/
+        
+        # Create DMG using hdiutil
+        hdiutil create -volname "EdafDesk" -srcfolder dmg_temp -ov -format UDZO EdafDesk.dmg
+    
+    - name: Upload macOS DMG
+      uses: actions/upload-artifact@v3
+      with:
+        name: EdafDesk-macOS
+        path: EdafDesk.dmg
+    
+    - name: Upload macOS App
+      uses: actions/upload-artifact@v3
+      with:
+        name: EdafDesk-macOS-App
+        path: dist/EdafDesk.app
