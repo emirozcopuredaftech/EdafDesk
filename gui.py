@@ -219,12 +219,6 @@ class RemoteDesktopGUI:
             state=tk.DISABLED
         )
         self.disconnect_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
-            command=self.disconnect_from_host,
-            cursor="hand2",
-            pady=10,
-            state=tk.DISABLED
-        )
-        self.disconnect_btn.pack(fill=tk.X, pady=5)
         
         # LOG BÖLÜMÜ
         log_frame = tk.LabelFrame(
