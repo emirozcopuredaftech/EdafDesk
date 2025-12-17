@@ -26,7 +26,7 @@ jobs:
     
     - name: Build Windows EXE
       run: |
-        pyinstaller --onefile --windowed --name=EdafDesk --noconsole main.py
+        pyinstaller EdafDesk.spec
     
     - name: Install Inno Setup
       run: |
@@ -68,7 +68,7 @@ jobs:
     
     - name: Build macOS App
       run: |
-        pyinstaller --onefile --windowed --name=EdafDesk --noconsole main.py
+        pyinstaller EdafDesk.spec
     
     - name: Create DMG
       run: |

@@ -2,11 +2,11 @@
 
 
 a = Analysis(
-    ['main.py'],
+    ['main.py', 'gui.py', 'host.py', 'client.py', 'config.py', 'screen_capture.py', 'input_control.py', 'favorites.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['tkinter', 'tkinter.ttk', 'tkinter.messagebox', 'tkinter.scrolledtext', 'tkinter.simpledialog', 'PIL', 'PIL.Image', 'PIL.ImageGrab', 'PIL.ImageTk', 'pynput', 'pynput.mouse', 'pynput.keyboard'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
