@@ -25,7 +25,23 @@ class ClientConnection:
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.host_ip, self.host_port))
-            self.running = True
+            
+            self.log(f"⏳ Bağlantı kuruluyor, onay bekleniyor...")
+            
+            # Host'tan onay bekle
+            approval_response = self.socket.recv(1024)
+            
+            if approval_response == b"REJECTED":
+                self.log(f"❌ Bağlantı reddedildi!")
+                self.socket.close()
+                self.running = False
+                return False
+            elif approval_response == b"APPROVED":
+                self.log(f"✅ Bağlantı onaylandı!")
+                self.running = True
+            else:
+                self.log(f"⚠️ Bilinmeyen yanıt")
+                self.running = True
             
             self.log(f"✅ {self.host_ip}:{self.host_port} adresine bağlanıldı!")
             
@@ -36,9 +52,12 @@ class ClientConnection:
             receive_thread = threading.Thread(target=self.receive_screen, daemon=True)
             receive_thread.start()
             
+            return True
+            
         except Exception as e:
             self.log(f"❌ Bağlantı başarısız: {str(e)}")
             self.running = False
+            return False
     
     def create_screen_window(self):
         """Uzak ekranı gösteren pencere oluştur"""

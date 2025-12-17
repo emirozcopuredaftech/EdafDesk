@@ -12,9 +12,10 @@ from input_control import InputController
 from config import *
 
 class HostServer:
-    def __init__(self, port, log_callback=None):
+    def __init__(self, port, log_callback=None, approval_callback=None):
         self.port = port
         self.log = log_callback or print
+        self.approval_callback = approval_callback
         self.running = False
         self.server_socket = None
         self.screen_capture = ScreenCapture()
@@ -45,7 +46,32 @@ class HostServer:
         while self.running:
             try:
                 client_socket, address = self.server_socket.accept()
-                self.log(f"✅ Yeni bağlantı: {address}")
+                self.log(f"🔔 Bağlantı isteği: {address[0]}")
+                
+                # Onay callback varsa kullan
+                if hasattr(self, 'approval_callback') and self.approval_callback:
+                    approved = self.approval_callback(address[0])
+                    
+                    if not approved:
+                        self.log(f"❌ Bağlantı reddedildi: {address[0]}")
+                        try:
+                            client_socket.send(b"REJECTED")
+                            client_socket.close()
+                        except:
+                            pass
+                        continue
+                    else:
+                        self.log(f"✅ Bağlantı onaylandı: {address[0]}")
+                        try:
+                            client_socket.send(b"APPROVED")
+                        except:
+                            pass
+                else:
+                    # Onay mekanizması yoksa direkt kabul et
+                    try:
+                        client_socket.send(b"APPROVED")
+                    except:
+                        pass
                 
                 # Her client için ayrı thread
                 client_thread = threading.Thread(

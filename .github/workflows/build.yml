@@ -28,11 +28,27 @@ jobs:
       run: |
         pyinstaller --onefile --windowed --name=EdafDesk --noconsole main.py
     
-    - name: Upload Windows Artifact
+    - name: Install Inno Setup
+      run: |
+        choco install innosetup -y
+    
+    - name: Create Windows Installer
+      run: |
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+      continue-on-error: true
+    
+    - name: Upload Windows EXE
       uses: actions/upload-artifact@v4
       with:
-        name: EdafDesk-Windows
+        name: EdafDesk-Windows-EXE
         path: dist/EdafDesk.exe
+    
+    - name: Upload Windows Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: EdafDesk-Windows-Setup
+        path: installer_output/EdafDesk_Setup_*.exe
+      continue-on-error: true
 
   build-macos:
     runs-on: macos-latest

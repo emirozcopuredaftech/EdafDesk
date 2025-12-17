@@ -9,19 +9,22 @@ import socket
 from config import *
 from host import HostServer
 from client import ClientConnection
+from favorites import FavoritesManager
 
 class RemoteDesktopGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("EdafDesk - Uzak Masaüstü")
-        self.root.geometry("600x700")
+        self.root.geometry("700x800")
         self.root.configure(bg=BG_COLOR)
         
         self.host_server = None
         self.client_connection = None
+        self.favorites_manager = FavoritesManager()
         
         self.setup_ui()
         self.get_local_ip()
+        self.load_favorites_list()
         
     def setup_ui(self):
         """UI Bileşenlerini oluştur"""
@@ -126,13 +129,33 @@ class RemoteDesktopGUI:
         )
         client_frame.pack(fill=tk.X, pady=(0, 20))
         
+        # Favori seçimi
+        fav_select_frame = tk.Frame(client_frame, bg=BG_COLOR)
+        fav_select_frame.pack(fill=tk.X, pady=5)
+        
+        tk.Label(
+            fav_select_frame,
+            text="Favoriler:",
+            font=("Arial", 10),
+            bg=BG_COLOR
+        ).pack(side=tk.LEFT)
+        
+        self.favorites_combo = ttk.Combobox(
+            fav_select_frame,
+            font=("Arial", 10),
+            width=30,
+            state="readonly"
+        )
+        self.favorites_combo.pack(side=tk.LEFT, padx=10)
+        self.favorites_combo.bind("<<ComboboxSelected>>", self.on_favorite_selected)
+        
         # Hedef IP
         target_frame = tk.Frame(client_frame, bg=BG_COLOR)
         target_frame.pack(fill=tk.X, pady=5)
         
         tk.Label(
             target_frame,
-            text="Hedef IP:",
+            text="IP Adresi:",
             font=("Arial", 10),
             bg=BG_COLOR
         ).pack(side=tk.LEFT)
@@ -157,8 +180,11 @@ class RemoteDesktopGUI:
         self.target_port_entry.pack(side=tk.LEFT, padx=10)
         
         # Client Butonları
+        buttons_frame = tk.Frame(client_frame, bg=BG_COLOR)
+        buttons_frame.pack(fill=tk.X, pady=5)
+        
         self.connect_btn = tk.Button(
-            client_frame,
+            buttons_frame,
             text="🔗 Bağlan",
             font=("Arial", 11, "bold"),
             bg=PRIMARY_COLOR,
@@ -167,14 +193,32 @@ class RemoteDesktopGUI:
             cursor="hand2",
             pady=10
         )
-        self.connect_btn.pack(fill=tk.X, pady=5)
+        self.connect_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        
+        self.save_fav_btn = tk.Button(
+            buttons_frame,
+            text="⭐ Kaydet",
+            font=("Arial", 11, "bold"),
+            bg=SUCCESS_COLOR,
+            fg="white",
+            command=self.save_favorite,
+            cursor="hand2",
+            pady=10
+        )
+        self.save_fav_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
         self.disconnect_btn = tk.Button(
-            client_frame,
-            text="❌ Bağlantıyı Kes",
+            buttons_frame,
+            text="❌ Kes",
             font=("Arial", 11, "bold"),
             bg=ERROR_COLOR,
             fg="white",
+            command=self.disconnect_from_host,
+            cursor="hand2",
+            pady=10,
+            state=tk.DISABLED
+        )
+        self.disconnect_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
             command=self.disconnect_from_host,
             cursor="hand2",
             pady=10,
@@ -225,7 +269,7 @@ class RemoteDesktopGUI:
         """Host sunucusunu başlat"""
         try:
             port = int(self.port_entry.get())
-            self.host_server = HostServer(port, self.log)
+            self.host_server = HostServer(port, self.log, self.approval_dialog)
             
             # Sunucuyu ayrı thread'de başlat
             host_thread = threading.Thread(target=self.host_server.start, daemon=True)
@@ -240,6 +284,15 @@ class RemoteDesktopGUI:
         except Exception as e:
             messagebox.showerror("Hata", f"Host başlatılamadı: {str(e)}")
             self.log(f"❌ Hata: {str(e)}")
+    
+    def approval_dialog(self, ip_address):
+        """Bağlantı onay dialogu"""
+        result = messagebox.askyesno(
+            "Bağlantı İsteği",
+            f"⚠️ {ip_address} adresi bağlanmak istiyor.\n\nBağlantıyı onaylıyor musunuz?",
+            icon='question'
+        )
+        return result
     
     def stop_host(self):
         """Host sunucusunu durdur"""
@@ -256,6 +309,10 @@ class RemoteDesktopGUI:
         try:
             ip = self.target_ip_entry.get()
             port = int(self.target_port_entry.get())
+            
+            # Son bağlantılara ekle
+            self.favorites_manager.add_recent(ip, port)
+            self.load_favorites_list()
             
             self.client_connection = ClientConnection(ip, port, self.log)
             
@@ -285,3 +342,75 @@ class RemoteDesktopGUI:
             self.connect_btn.config(state=tk.NORMAL)
             self.disconnect_btn.config(state=tk.DISABLED)
             self.log("❌ Bağlantı kesildi")
+    
+    def save_favorite(self):
+        """Mevcut bağlantıyı favorilere kaydet"""
+        ip = self.target_ip_entry.get()
+        port = self.target_port_entry.get()
+        
+        if not ip:
+            messagebox.showwarning("Uyarı", "IP adresi giriniz!")
+            return
+        
+        # İsim sor
+        import tkinter.simpledialog
+        name = tkinter.simpledialog.askstring(
+            "Favori İsmi",
+            f"Bu bağlantı için bir isim girin:\n{ip}:{port}",
+            initialvalue=f"Bağlantı {ip}"
+        )
+        
+        if name:
+            try:
+                self.favorites_manager.add_favorite(name, ip, int(port))
+                self.load_favorites_list()
+                self.log(f"⭐ '{name}' favorilere eklendi")
+                messagebox.showinfo("Başarılı", f"'{name}' favorilere kaydedildi!")
+            except Exception as e:
+                messagebox.showerror("Hata", f"Kayıt başarısız: {str(e)}")
+    
+    def on_favorite_selected(self, event=None):
+        """Favori seçildiğinde IP ve port'u doldur"""
+        selection = self.favorites_combo.get()
+        if not selection or selection.startswith("---"):
+            return
+        
+        # Favorilerde ara
+        for fav in self.favorites_manager.get_favorites():
+            if selection.startswith(fav["name"]):
+                self.target_ip_entry.delete(0, tk.END)
+                self.target_ip_entry.insert(0, fav["ip"])
+                self.target_port_entry.delete(0, tk.END)
+                self.target_port_entry.insert(0, fav["port"])
+                return
+        
+        # Son bağlantılarda ara
+        for rec in self.favorites_manager.get_recent():
+            if selection.startswith(rec["ip"]):
+                self.target_ip_entry.delete(0, tk.END)
+                self.target_ip_entry.insert(0, rec["ip"])
+                self.target_port_entry.delete(0, tk.END)
+                self.target_port_entry.insert(0, rec["port"])
+                return
+    
+    def load_favorites_list(self):
+        """Favori listesini yükle"""
+        values = []
+        
+        # Favorileri ekle
+        favorites = self.favorites_manager.get_favorites()
+        if favorites:
+            values.append("--- FAVORİLER ---")
+            for fav in favorites:
+                values.append(f"{fav['name']} ({fav['ip']}:{fav['port']})")
+        
+        # Son bağlantıları ekle
+        recent = self.favorites_manager.get_recent()
+        if recent:
+            if values:
+                values.append("--- SON BAĞLANTILAR ---")
+            for rec in recent:
+                values.append(f"{rec['ip']}:{rec['port']} ({rec['timestamp']})")
+        
+        self.favorites_combo['values'] = values if values else ["Favori yok"]
+
