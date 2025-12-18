@@ -29,11 +29,16 @@ class RelayServer:
         try:
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            
+            print(f"🔧 0.0.0.0:{self.port} adresine bağlanıyor...")
             self.server_socket.bind(('0.0.0.0', self.port))
+            print(f"✅ Bind başarılı!")
+            
             self.server_socket.listen(100)
+            print(f"✅ Listen başarılı!")
             self.running = True
             
-            print(f"🚀 Relay sunucu {self.port} portunda başlatıldı")
+            print(f"🚀 Relay sunucu {self.port} portunda başlatıldı - bağlantılar bekleniyor...")
             
             while self.running:
                 client_socket, address = self.server_socket.accept()
