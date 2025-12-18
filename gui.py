@@ -9,18 +9,23 @@ import socket
 from config import *
 from host import HostServer
 from client import ClientConnection
+from relay_host import RelayHost
+from relay_client import RelayClient
 from favorites import FavoritesManager
 
 class RemoteDesktopGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("EdafDesk - Uzak Masaüstü")
-        self.root.geometry("700x800")
+        self.root.geometry("700x850")
         self.root.configure(bg=BG_COLOR)
         
         self.host_server = None
+        self.relay_host = None
         self.client_connection = None
+        self.relay_client = None
         self.favorites_manager = FavoritesManager()
+        self.connection_mode = "local"  # "local" veya "internet"
         
         self.setup_ui()
         self.get_local_ip()
@@ -43,7 +48,55 @@ class RemoteDesktopGUI:
         title_label.pack()
         
         # Ana Container
-        main_frame = tk.Frame(self.root, bg=BG_COLOR)
+        maMOD SEÇİMİ
+        mode_frame = tk.LabelFrame(
+            main_frame,
+            text="🌐 Bağlantı Modu",
+            font=("Arial", 12, "bold"),
+            bg=BG_COLOR,
+            pady=10,
+            padx=10
+        )
+        mode_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        self.mode_var = tk.StringVar(value="local")
+        
+        tk.Radiobutton(
+            mode_frame,
+            text="🏠 Lokal Ağ (Aynı ağdaki cihazlar)",
+            variable=self.mode_var,
+            value="local",
+            font=("Arial", 10),
+            bg=BG_COLOR,
+            command=self.on_mode_change
+        ).pack(anchor=tk.W, pady=2)
+        
+        tk.Radiobutton(
+            mode_frame,
+            text="🌍 İnternet (Her yerden)",
+            variable=self.mode_var,
+            value="internet",
+            font=("Arial", 10),
+            bg=BG_COLOR,
+            command=self.on_mode_change
+        ).pack(anchor=tk.W, pady=2)
+        
+        # Relay sunucu ayarı
+        relay_config_frame = tk.Frame(mode_frame, bg=BG_COLOR)
+        relay_config_frame.pack(fill=tk.X, pady=5)
+        
+        tk.Label(
+            relay_config_frame,
+            text="Relay Sunucu:",
+            font=("Arial", 9),
+            bg=BG_COLOR
+        ).pack(side=tk.LEFT)
+        
+        self.relay_server_entry = tk.Entry(relay_config_frame, font=("Arial", 9), width=25)
+        self.relay_server_entry.insert(0, RELAY_SERVER)
+        self.relay_server_entry.pack(side=tk.LEFT, padx=5)
+        
+        # in_frame = tk.Frame(self.root, bg=BG_COLOR)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         # HOST BÖLÜMÜ
@@ -149,18 +202,19 @@ class RemoteDesktopGUI:
         self.favorites_combo.pack(side=tk.LEFT, padx=10)
         self.favorites_combo.bind("<<ComboboxSelected>>", self.on_favorite_selected)
         
-        # Hedef IP
-        target_frame = tk.Frame(client_frame, bg=BG_COLOR)
-        target_frame.pack(fill=tk.X, pady=5)
+        # Hedef IP / ID (mod'a göre değişir)
+        self.target_frame = tk.Frame(client_frame, bg=BG_COLOR)
+        self.target_frame.pack(fill=tk.X, pady=5)
         
-        tk.Label(
-            target_frame,
+        self.target_label = tk.Label(
+            self.target_frame,
             text="IP Adresi:",
             font=("Arial", 10),
             bg=BG_COLOR
-        ).pack(side=tk.LEFT)
+        )
+        self.target_label.pack(side=tk.LEFT)
         
-        self.target_ip_entry = tk.Entry(target_frame, font=("Arial", 10), width=20)
+        self.target_ip_entry = tk.Entry(self.target_frame, font=("Arial", 10), width=20)
         self.target_ip_entry.insert(0, "192.168.1.100")
         self.target_ip_entry.pack(side=tk.LEFT, padx=10)
         
@@ -258,14 +312,37 @@ class RemoteDesktopGUI:
         """Log mesajı ekle"""
         self.log_text.insert(tk.END, f"{message}\n")
         self.log_text.see(tk.END)
+    
+    def on_mode_change(self):
+        """Bağlantı modunu değiştir"""
+        mode = self.mode_var.get()
+        
+        if mode == "internet":
+            self.target_label.config(text="Host ID:")
+            self.target_ip_entry.delete(0, tk.END)
+            self.target_ip_entry.insert(0, "123456789")
+            self.target_port_entry.master.pack_forget()
+        else:
+            self.target_label.config(text="IP Adresi:")
+            self.target_ip_entry.delete(0, tk.END)
+            self.target_ip_entry.insert(0, "192.168.1.100")
+            self.target_port_entry.master.pack(fill=tk.X, pady=5)
         
     def start_host(self):
         """Host sunucusunu başlat"""
+        mode = self.mode_var.get()
+        
+        if mode == "local":
+            self.start_local_host()
+        else:
+            self.start_relay_host()
+    
+    def start_local_host(self):
+        """Lokal host başlat"""
         try:
             port = int(self.port_entry.get())
             self.host_server = HostServer(port, self.log, self.approval_dialog)
             
-            # Sunucuyu ayrı thread'de başlat
             host_thread = threading.Thread(target=self.host_server.start, daemon=True)
             host_thread.start()
             
@@ -277,6 +354,25 @@ class RemoteDesktopGUI:
             messagebox.showerror("Hata", "Geçerli bir port numarası girin!")
         except Exception as e:
             messagebox.showerror("Hata", f"Host başlatılamadı: {str(e)}")
+            self.log(f"❌ Hata: {str(e)}")
+    
+    def start_relay_host(self):
+        """Relay host başlat"""
+        try:
+            relay_server = self.relay_server_entry.get()
+            self.relay_host = RelayHost(relay_server, RELAY_PORT, self.log)
+            
+            def start_and_get_id():
+                success = self.relay_host.start()
+                if success:
+                    self.root.after(0, lambda: self.start_host_btn.config(state=tk.DISABLED))
+                    self.root.after(0, lambda: self.stop_host_btn.config(state=tk.NORMAL))
+            
+            host_thread = threading.Thread(target=start_and_get_id, daemon=True)
+            host_thread.start()
+            
+        except Exception as e:
+            messagebox.showerror("Hata", f"Relay host başlatılamadı: {str(e)}")
             self.log(f"❌ Hata: {str(e)}")
     
     def approval_dialog(self, ip_address):
@@ -293,24 +389,35 @@ class RemoteDesktopGUI:
         if self.host_server:
             self.host_server.stop()
             self.host_server = None
+        
+        if self.relay_host:
+            self.relay_host.stop()
+            self.relay_host = None
             
-            self.start_host_btn.config(state=tk.NORMAL)
-            self.stop_host_btn.config(state=tk.DISABLED)
-            self.log("⏹ Host sunucusu durduruldu")
+        self.start_host_btn.config(state=tk.NORMAL)
+        self.stop_host_btn.config(state=tk.DISABLED)
+        self.log("⏹ Host sunucusu durduruldu")
     
     def connect_to_host(self):
         """Uzak host'a bağlan"""
+        mode = self.mode_var.get()
+        
+        if mode == "local":
+            self.connect_local()
+        else:
+            self.connect_relay()
+    
+    def connect_local(self):
+        """Lokal ağda bağlan"""
         try:
             ip = self.target_ip_entry.get()
             port = int(self.target_port_entry.get())
             
-            # Son bağlantılara ekle
             self.favorites_manager.add_recent(ip, port)
             self.load_favorites_list()
             
             self.client_connection = ClientConnection(ip, port, self.log)
             
-            # Client'ı ayrı thread'de başlat
             client_thread = threading.Thread(
                 target=self.client_connection.connect,
                 daemon=True
@@ -321,8 +428,35 @@ class RemoteDesktopGUI:
             self.disconnect_btn.config(state=tk.NORMAL)
             self.log(f"🔗 {ip}:{port} adresine bağlanılıyor...")
             
-        except ValueError:
-            messagebox.showerror("Hata", "Geçerli IP ve port girin!")
+        
+        if self.relay_client:
+            self.relay_client.disconnect()
+            self.relay_client = None
+            
+        self.connect_btn.config(state=tk.NORMAL)
+        self.disconnect_btn.config(state=tk.DISABLED)
+        messagebox.showerror("Hata", f"Bağlantı başlatılamadı: {str(e)}")
+            self.log(f"❌ Hata: {str(e)}")
+    
+    def connect_relay(self):
+        """Relay üzerinden bağlan"""
+        try:
+            host_id = self.target_ip_entry.get()
+            relay_server = self.relay_server_entry.get()
+            
+            self.relay_client = RelayClient(host_id, relay_server, RELAY_PORT, self.log)
+            
+            def connect_thread():
+                success = self.relay_client.connect()
+                if success:
+                    self.root.after(0, lambda: self.connect_btn.config(state=tk.DISABLED))
+                    self.root.after(0, lambda: self.disconnect_btn.config(state=tk.NORMAL))
+            
+            client_thread = threading.Thread(target=connect_thread, daemon=True)
+            client_thread.start()
+            
+            self.log(f"🔗 Host ID {host_id} ile bağlanılıyor...")
+            
         except Exception as e:
             messagebox.showerror("Hata", f"Bağlantı başlatılamadı: {str(e)}")
             self.log(f"❌ Hata: {str(e)}")

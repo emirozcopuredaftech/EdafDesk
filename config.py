@@ -8,6 +8,10 @@ BUFFER_SIZE = 65536
 COMPRESSION_QUALITY = 60  # JPEG kalitesi (0-100)
 FPS = 15  # Saniyede kare sayısı (daha smooth)
 
+# Relay Sunucu Ayarları
+RELAY_SERVER = "localhost"  # Varsayılan relay sunucu adresi (değiştirilebilir)
+RELAY_PORT = 9999
+
 # Güvenlik
 MAX_CONNECTIONS = 5
 CONNECTION_TIMEOUT = 300  # saniye
