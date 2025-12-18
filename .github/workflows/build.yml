@@ -69,6 +69,11 @@ jobs:
       run: |
         pyinstaller EdafDesk.spec
     
+    - name: Create PKG Installer
+      run: |
+        chmod +x create_mac_installer.sh
+        ./create_mac_installer.sh
+    
     - name: Create DMG
       run: |
         # Create a temporary directory for DMG contents
@@ -77,6 +82,12 @@ jobs:
         
         # Create DMG using hdiutil
         hdiutil create -volname "EdafDesk" -srcfolder dmg_temp -ov -format UDZO EdafDesk.dmg
+    
+    - name: Upload macOS PKG
+      uses: actions/upload-artifact@v4
+      with:
+        name: EdafDesk-macOS-PKG
+        path: EdafDesk_Installer.pkg
     
     - name: Upload macOS DMG
       uses: actions/upload-artifact@v4
@@ -115,6 +126,12 @@ jobs:
         name: EdafDesk-macOS
         path: ./artifacts/macos
 
+    - name: Download macOS PKG
+      uses: actions/download-artifact@v4
+      with:
+        name: EdafDesk-macOS-PKG
+        path: ./artifacts/macos-pkg
+
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -122,6 +139,7 @@ jobs:
           ./artifacts/windows/EdafDesk.exe
           ./artifacts/windows-setup/EdafDesk_Setup_*.exe
           ./artifacts/macos/EdafDesk.dmg
+          ./artifacts/macos-pkg/EdafDesk_Installer.pkg
         draft: false
         prerelease: false
         generate_release_notes: true

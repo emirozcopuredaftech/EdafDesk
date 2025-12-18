@@ -49,25 +49,24 @@ class HostServer:
                 self.log(f"🔔 Bağlantı isteği: {address[0]}")
                 
                 # Onay callback varsa kullan
-                if hasattr(self, 'approval_callback') and self.approval_callback:
-                    approved = self.approval_callback(address[0])
-                    
-                    if not approved:
-                        self.log(f"❌ Bağlantı reddedildi: {address[0]}")
-                        try:
-                            client_socket.send(b"REJECTED")
-                            client_socket.close()
-                        except:
-                            pass
-                        continue
-                    else:
-                        self.log(f"✅ Bağlantı onaylandı: {address[0]}")
-                        try:
-                            client_socket.send(b"APPROVED")
-                        except:
-                            pass
+                approved = True
+                if self.approval_callback:
+                    try:
+                        approved = self.approval_callback(address[0])
+                    except Exception as e:
+                        self.log(f"⚠️ Bağlantı kabul hatası: {str(e)}")
+                        approved = True  # Hata durumunda kabul et
+                
+                if not approved:
+                    self.log(f"❌ Bağlantı reddedildi: {address[0]}")
+                    try:
+                        client_socket.send(b"REJECTED")
+                        client_socket.close()
+                    except:
+                        pass
+                    continue
                 else:
-                    # Onay mekanizması yoksa direkt kabul et
+                    self.log(f"✅ Bağlantı onaylandı: {address[0]}")
                     try:
                         client_socket.send(b"APPROVED")
                     except:

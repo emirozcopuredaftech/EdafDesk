@@ -19,8 +19,16 @@ CONNECTION_TIMEOUT = 300  # saniye
 # Ekran Ayarları
 SCREEN_SCALE = 0.7  # Ekran ölçeklendirme (performans için)
 
-# Renkler
-PRIMARY_COLOR = "#2196F3"
-SUCCESS_COLOR = "#4CAF50"
-ERROR_COLOR = "#F44336"
-BG_COLOR = "#FFFFFF"
+# Renkler (Mac ve Windows uyumlu)
+import platform
+
+if platform.system() == 'Darwin':  # Mac
+    PRIMARY_COLOR = "#007AFF"  # Mac mavi
+    SUCCESS_COLOR = "#34C759"  # Mac yeşil
+    ERROR_COLOR = "#FF3B30"    # Mac kırmızı
+    BG_COLOR = "#F5F5F7"       # Mac açık gri
+else:  # Windows
+    PRIMARY_COLOR = "#2196F3"
+    SUCCESS_COLOR = "#4CAF50"
+    ERROR_COLOR = "#F44336"
+    BG_COLOR = "#FFFFFF"

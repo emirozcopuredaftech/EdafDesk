@@ -380,12 +380,16 @@ class RemoteDesktopGUI:
     
     def approval_dialog(self, ip_address):
         """Bağlantı onay dialogu"""
-        result = messagebox.askyesno(
-            "Bağlantı İsteği",
-            f"⚠️ {ip_address} adresi bağlanmak istiyor.\n\nBağlantıyı onaylıyor musunuz?",
-            icon='question'
-        )
-        return result
+        try:
+            result = messagebox.askyesno(
+                "Bağlantı İsteği",
+                f"⚠️ {ip_address} adresi bağlanmak istiyor.\n\nBağlantıyı onaylıyor musunuz?",
+                icon='question'
+            )
+            return result
+        except Exception as e:
+            self.log(f"⚠️ Onay dialog hatası: {str(e)}")
+            return True  # Hata durumunda kabul et
     
     def stop_host(self):
         """Host sunucusunu durdur"""
