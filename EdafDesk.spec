@@ -2,7 +2,7 @@
 import sys
 
 a = Analysis(
-    ['main.py', 'gui.py', 'host.py', 'client.py', 'config.py', 'screen_capture.py', 'input_control.py', 'favorites.py'],
+    ['main.py', 'gui.py', 'host.py', 'client.py', 'relay_host.py', 'relay_client.py', 'relay_server.py', 'config.py', 'screen_capture.py', 'input_control.py', 'favorites.py'],
     pathex=[],
     binaries=[],
     datas=[],
