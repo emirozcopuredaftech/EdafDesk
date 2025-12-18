@@ -435,14 +435,10 @@ class RemoteDesktopGUI:
             self.disconnect_btn.config(state=tk.NORMAL)
             self.log(f"🔗 {ip}:{port} adresine bağlanılıyor...")
             
-        
-        if self.relay_client:
-            self.relay_client.disconnect()
-            self.relay_client = None
-            
-        self.connect_btn.config(state=tk.NORMAL)
-        self.disconnect_btn.config(state=tk.DISABLED)
-        messagebox.showerror("Hata", f"Bağlantı başlatılamadı: {str(e)}")
+        except ValueError:
+            messagebox.showerror("Hata", "Geçerli IP ve port girin!")
+        except Exception as e:
+            messagebox.showerror("Hata", f"Bağlantı başlatılamadı: {str(e)}")
             self.log(f"❌ Hata: {str(e)}")
     
     def connect_relay(self):
