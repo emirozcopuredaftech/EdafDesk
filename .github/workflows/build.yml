@@ -3,6 +3,8 @@ name: Build EdafDesk for Windows and Mac
 on:
   push:
     branches: [ main, master ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -90,3 +92,41 @@ jobs:
       with:
         name: EdafDesk-macOS-App
         path: dist/EdafDesk.app
+
+  create-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Download Windows EXE
+      uses: actions/download-artifact@v4
+      with:
+        name: EdafDesk-Windows-EXE
+        path: ./artifacts/windows
+
+    - name: Download Windows Installer
+      uses: actions/download-artifact@v4
+      with:
+        name: EdafDesk-Windows-Setup
+        path: ./artifacts/windows-setup
+      continue-on-error: true
+
+    - name: Download macOS DMG
+      uses: actions/download-artifact@v4
+      with:
+        name: EdafDesk-macOS
+        path: ./artifacts/macos
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ./artifacts/windows/EdafDesk.exe
+          ./artifacts/windows-setup/EdafDesk_Setup_*.exe
+          ./artifacts/macos/EdafDesk.dmg
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

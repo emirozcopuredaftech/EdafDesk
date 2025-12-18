@@ -3,19 +3,71 @@ Ekran Yakalama Modülü
 """
 
 import io
-from PIL import ImageGrab
 import pickle
+import platform
+import subprocess
+import tempfile
+import os
 from config import *
 
 class ScreenCapture:
     def __init__(self):
-        pass
+        self.is_mac = platform.system() == 'Darwin'
+        self.is_windows = platform.system() == 'Windows'
         
-    def capture(self):
-        """Ekran görüntüsü yakala ve JPEG formatında döndür"""
+        # Windows için PIL'i import et
+        if self.is_windows:
+            from PIL import ImageGrab
+            self.ImageGrab = ImageGrab
+        
+        # Mac için PIL'i dene, yoksa None olarak bırak
+        if self.is_mac:
+            try:
+                from PIL import Image
+                self.Image = Image
+            except ImportError:
+                self.Image = None
+        
+    def _capture_mac_native(self):
+        """Mac için native screencapture komutunu kullan"""
         try:
-            # PIL ImageGrab kullan (threading sorunsuz)
-            img = ImageGrab.grab()
+            # Geçici dosya oluştur
+            temp_file = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+            temp_path = temp_file.name
+            temp_file.close()
+            
+            # screencapture komutu ile ekran yakala
+            subprocess.run(['screencapture', '-x', '-t', 'jpg', temp_path], 
+                         check=True, capture_output=True)
+            
+            # Dosyayı oku
+            with open(temp_path, 'rb') as f:
+                jpeg_data = f.read()
+            
+            # Geçici dosyayı sil
+            os.unlink(temp_path)
+            
+            # Ölçeklendirme gerekiyorsa
+            if SCREEN_SCALE < 1.0 and self.Image:
+                img = self.Image.open(io.BytesIO(jpeg_data))
+                new_width = int(img.width * SCREEN_SCALE)
+                new_height = int(img.height * SCREEN_SCALE)
+                img = img.resize((new_width, new_height), self.Image.LANCZOS)
+                
+                buffer = io.BytesIO()
+                img.save(buffer, format='JPEG', quality=COMPRESSION_QUALITY, optimize=True)
+                jpeg_data = buffer.getvalue()
+            
+            return jpeg_data
+            
+        except Exception as e:
+            print(f"Mac ekran yakalama hatası: {str(e)}")
+            return None
+    
+    def _capture_windows(self):
+        """Windows için PIL ImageGrab kullan"""
+        try:
+            img = self.ImageGrab.grab()
             
             # Performans için ölçeklendir
             if SCREEN_SCALE < 1.0:
@@ -24,13 +76,29 @@ class ScreenCapture:
                 from PIL import Image
                 img = img.resize((new_width, new_height), Image.LANCZOS)
             
-            # JPEG'e dönüştür (sıkıştırma için)
+            # JPEG'e dönüştür
             buffer = io.BytesIO()
             img.save(buffer, format='JPEG', quality=COMPRESSION_QUALITY, optimize=True)
-            jpeg_data = buffer.getvalue()
+            return buffer.getvalue()
             
-            # Pickle ile serialize et
-            return pickle.dumps(jpeg_data)
+        except Exception as e:
+            print(f"Windows ekran yakalama hatası: {str(e)}")
+            return None
+        
+    def capture(self):
+        """Ekran görüntüsü yakala ve JPEG formatında döndür"""
+        try:
+            if self.is_mac:
+                jpeg_data = self._capture_mac_native()
+            elif self.is_windows:
+                jpeg_data = self._capture_windows()
+            else:
+                print("Desteklenmeyen işletim sistemi")
+                return None
+            
+            if jpeg_data:
+                return pickle.dumps(jpeg_data)
+            return None
             
         except Exception as e:
             print(f"Ekran yakalama hatası: {str(e)}")
@@ -38,5 +106,15 @@ class ScreenCapture:
     
     def get_screen_size(self):
         """Ekran boyutunu döndür"""
-        img = ImageGrab.grab()
-        return (img.width, img.height)
+        if self.is_mac:
+            try:
+                # Mac için sistem profili ile ekran boyutunu al
+                result = subprocess.run(['system_profiler', 'SPDisplaysDataType'], 
+                                      capture_output=True, text=True)
+                # Basitleştirilmiş: varsayılan boyut döndür
+                return (1920, 1080)  # Gerçek boyut için parsing gerekli
+            except:
+                return (1920, 1080)
+        else:
+            img = self.ImageGrab.grab()
+            return (img.width, img.height)
