@@ -48,7 +48,10 @@ class RemoteDesktopGUI:
         title_label.pack()
         
         # Ana Container
-        maMOD SEÇİMİ
+        main_frame = tk.Frame(self.root, bg=BG_COLOR)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # MOD SECIMI
         mode_frame = tk.LabelFrame(
             main_frame,
             text="🌐 Bağlantı Modu",
