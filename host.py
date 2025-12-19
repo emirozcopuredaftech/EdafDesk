@@ -99,19 +99,29 @@ class HostServer:
         # Komut alma loop'u
         try:
             while self.running:
-                data = client_socket.recv(BUFFER_SIZE)
-                if not data:
-                    break
-                
-                # Client'tan gelen komutları işle (klavye/fare)
                 try:
-                    print(f"📦 Veri alındı, boyut: {len(data)}")
-                    command = pickle.loads(data)
-                    print(f"📋 Deserialize edildi: {command}")
-                    self.process_command(command)
-                except Exception as e:
-                    print(f"⚠️ Komut işleme hatası: {str(e)}")
-                    pass
+                    self.socket.settimeout(5.0)  # Timeout ayarla
+                    data = client_socket.recv(BUFFER_SIZE)
+                    if not data:
+                        break
+                    
+                    # Client'tan gelen komutları işle (klavye/fare)
+                    try:
+                        print(f"📦 Veri alındı, boyut: {len(data)}")
+                        command = pickle.loads(data)
+                        print(f"📋 Deserialize edildi: {command}")
+                        self.process_command(command)
+                    except (pickle.UnpicklingError, ValueError) as e:
+                        print(f"⚠️ Komut deserialize hatası: {str(e)}")
+                        continue
+                    except Exception as e:
+                        print(f"⚠️ Komut işleme hatası: {str(e)}")
+                        continue
+                        
+                except socket.timeout:
+                    continue  # Timeout normale, devam et
+                except (ConnectionResetError, BrokenPipeError):
+                    break  # Bağlantı koptu
                     
         except Exception as e:
             self.log(f"⚠️ Client bağlantı hatası: {str(e)}")
@@ -130,16 +140,28 @@ class HostServer:
                 # Ekran yakala
                 screen_data = self.screen_capture.capture()
                 
-                if screen_data:
-                    # Veriyi sıkıştır ve gönder
-                    compressed_data = zlib.compress(screen_data, 6)
-                    
-                    # Veri boyutunu gönder (4 byte)
-                    size = len(compressed_data)
-                    client_socket.sendall(size.to_bytes(4, byteorder='big'))
-                    
-                    # Veriyi gönder
-                    client_socket.sendall(compressed_data)
+                if screen_data and len(screen_data) > 10:  # Veri bütünlüğü kontrolü
+                    try:
+                        # Veriyi sıkıştır ve gönder
+                        compressed_data = zlib.compress(screen_data, 6)
+                        
+                        # Boyut kontrolü
+                        if len(compressed_data) > MAX_FRAME_SIZE:
+                            continue  # Çok büyük frame'i atla
+                        
+                        # Veri boyutunu gönder (4 byte)
+                        size = len(compressed_data)
+                        client_socket.sendall(size.to_bytes(4, byteorder='big'))
+                        
+                        # Veriyi gönder
+                        client_socket.sendall(compressed_data)
+                        
+                    except (socket.error, BrokenPipeError) as e:
+                        self.log(f"⚠️ Veri gönderme hatası: {str(e)}")
+                        break
+                    except Exception as e:
+                        self.log(f"⚠️ Sıkıştırma hatası: {str(e)}")
+                        continue
                 
                 time.sleep(frame_delay)
                 

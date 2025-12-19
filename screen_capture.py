@@ -96,8 +96,17 @@ class ScreenCapture:
                 print("Desteklenmeyen işletim sistemi")
                 return None
             
-            if jpeg_data:
-                return pickle.dumps(jpeg_data)
+            if jpeg_data and len(jpeg_data) > 100:  # Minimum boyut kontrolü
+                # Veri bütünlüğü için checksum ile doğrula
+                try:
+                    # Basit veri geçerlilik kontrolü
+                    test_img = io.BytesIO(jpeg_data)
+                    from PIL import Image
+                    Image.open(test_img).verify()  # JPEG geçerliliğini kontrol et
+                    return pickle.dumps(jpeg_data)
+                except Exception as e:
+                    print(f"JPEG doğrulama hatası: {str(e)}")
+                    return None
             return None
             
         except Exception as e:

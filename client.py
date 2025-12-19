@@ -100,14 +100,31 @@ class ClientConnection:
                     break
                 
                 # Veriyi çöz
-                screen_data = zlib.decompress(compressed_data)
-                image_data = pickle.loads(screen_data)
-                
-                # PIL Image'e dönüştür
-                image = Image.open(io.BytesIO(image_data))
-                
-                # Canvas'a göster
-                self.display_image(image)
+                try:
+                    screen_data = zlib.decompress(compressed_data)
+                    
+                    # Veri bütünlüğünü kontrol et
+                    if len(screen_data) < 10:  # Çok küçükse geçersiz
+                        continue
+                        
+                    image_data = pickle.loads(screen_data)
+                    
+                    # Veri tipini kontrol et
+                    if not isinstance(image_data, bytes):
+                        continue
+                        
+                    # PIL Image'e dönüştür
+                    image = Image.open(io.BytesIO(image_data))
+                    
+                    # Canvas'a göster
+                    self.display_image(image)
+                    
+                except (pickle.UnpicklingError, zlib.error, ValueError) as e:
+                    self.log(f"⚠️ Veri hatası, frame atlanıyor: {str(e)[:50]}...")
+                    continue
+                except Exception as e:
+                    self.log(f"⚠️ Görüntü işleme hatası: {str(e)[:50]}...")
+                    continue
                 
             except Exception as e:
                 if self.running:
@@ -118,13 +135,26 @@ class ClientConnection:
     
     def recv_all(self, size):
         """Belirtilen boyutta veri al"""
+        if not self.socket:
+            return None
+            
+        # Timeout ayarla
+        self.socket.settimeout(10.0)
         data = b''
-        while len(data) < size:
-            packet = self.socket.recv(size - len(data))
-            if not packet:
-                return None
-            data += packet
-        return data
+        try:
+            while len(data) < size:
+                remaining = size - len(data)
+                packet = self.socket.recv(min(remaining, BUFFER_SIZE))
+                if not packet:
+                    return None
+                data += packet
+            return data
+        except socket.timeout:
+            self.log("⚠️ Veri alma zaman aşımı")
+            return None
+        except Exception as e:
+            self.log(f"⚠️ Veri alma hatası: {str(e)}")
+            return None
     
     def display_image(self, image):
         """Görüntüyü canvas'a göster"""

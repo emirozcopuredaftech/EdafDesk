@@ -15,6 +15,7 @@ RELAY_PORT = 9999
 # Güvenlik
 MAX_CONNECTIONS = 5
 CONNECTION_TIMEOUT = 300  # saniye
+MAX_FRAME_SIZE = 5 * 1024 * 1024  # 5MB maksimum frame boyutu
 
 # Ekran Ayarları
 SCREEN_SCALE = 0.7  # Ekran ölçeklendirme (performans için)
