@@ -3,9 +3,11 @@ import sys
 
 a = Analysis(
     ['main.py'],
-    pathex=[],
+    pathex=['.'],  # Current directory'yi pathex'e ekle
     binaries=[],
-    datas=[],
+    datas=[
+        ('*.py', '.'),  # Tüm Python dosyalarını include et
+    ],
     hiddenimports=[
         'client',
         'host', 

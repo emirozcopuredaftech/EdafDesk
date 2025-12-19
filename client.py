@@ -222,13 +222,6 @@ class ClientConnection:
             
         except Exception as e:
             print(f"Görüntü gösterme hatası: {str(e)}")
-                self.canvas.itemconfig(self.image_id, image=photo)
-            
-            self.canvas.image = photo  # Referansı sakla
-            self.canvas.update_idletasks()  # Smooth güncelleme
-            
-        except Exception as e:
-            pass
     
     def on_mouse_move(self, event):
         """Mouse hareket olayı"""
