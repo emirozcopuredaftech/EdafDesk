@@ -9,7 +9,7 @@ COMPRESSION_QUALITY = 60  # JPEG kalitesi (0-100)
 FPS = 15  # Saniyede kare sayısı (daha smooth)
 
 # Relay Sunucu Ayarları
-RELAY_SERVER = "localhost"  # Varsayılan relay sunucu adresi (değiştirilebilir)
+RELAY_SERVER = "92.5.52.157"  # Oracle Cloud relay sunucu adresi
 RELAY_PORT = 9999
 
 # Güvenlik

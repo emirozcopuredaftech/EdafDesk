@@ -83,17 +83,71 @@ sudo systemctl status edafdesk-relay
 
 ### 5. Firewall Ayarları
 
+#### Ubuntu UFW:
 ```bash
-# UFW (Ubuntu)
 sudo ufw allow 9999/tcp
+sudo ufw enable
+sudo ufw status verbose
+```
 
-# Firewalld (CentOS)
+#### **ORACLE CLOUD ÖNEMLİ!**
+
+Oracle Cloud kullanıyorsanız **IKI YER**de ayar yapmalısınız:
+
+**A) Ubuntu UFW (Yukarıda yaptık ✅)**
+
+**B) Oracle Cloud Security List (KRİTİK!):**
+
+1. **Oracle Cloud Console** → https://cloud.oracle.com
+2. Menü (☰) → **Networking** → **Virtual Cloud Networks**
+3. VCN'inizi seçin (test-vcn gibi)
+4. Sol menü → **Security Lists**
+5. **Default Security List for [VCN-name]** tıklayın
+6. **Ingress Rules** sekmesi
+7. **Add Ingress Rules** butonu
+
+**Kural Ayarları:**
+```
+Stateless: ❌ (boş bırak)
+Source Type: CIDR
+Source CIDR: 0.0.0.0/0
+IP Protocol: TCP
+Source Port Range: (boş - All)
+Destination Port Range: 9999
+Description: EdafDesk Relay Server
+```
+
+8. **Add Ingress Rules** → Kaydet
+
+**⚠️ Bu adım olmadan dışarıdan bağlantı ASLA gelmez!**
+
+#### Test:
+```bash
+# Sunucuda port dinliyor mu?
+ss -tuln | grep 9999
+
+# Dışarıdan test (başka bilgisayardan)
+# Windows PowerShell:
+Test-NetConnection -ComputerName SUNUCU_IP -Port 9999
+
+# Linux/Mac:
+nc -zv SUNUCU_IP 9999
+```
+
+#### Diğer Cloud Sağlayıcılar:
+
+**AWS EC2:**
+- Security Groups → Inbound Rules → Add Rule
+- Type: Custom TCP, Port: 9999, Source: 0.0.0.0/0
+
+**DigitalOcean:**
+- Networking → Firewalls → Add Rule
+- Type: TCP, Port: 9999, Sources: All IPv4
+
+**Firewalld (CentOS):**
+```bash
 sudo firewall-cmd --permanent --add-port=9999/tcp
 sudo firewall-cmd --reload
-
-# iptables
-sudo iptables -A INPUT -p tcp --dport 9999 -j ACCEPT
-sudo iptables-save > /etc/iptables/rules.v4
 ```
 
 ### 6. Client Tarafında Ayar

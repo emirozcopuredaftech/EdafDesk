@@ -1,12 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
-import sys
+
 
 a = Analysis(
-    ['main.py', 'gui.py', 'host.py', 'client.py', 'relay_host.py', 'relay_client.py', 'relay_server.py', 'config.py', 'screen_capture.py', 'input_control.py', 'favorites.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['tkinter', 'tkinter.ttk', 'tkinter.messagebox', 'tkinter.scrolledtext', 'tkinter.simpledialog', 'PIL', 'PIL.Image', 'PIL.ImageGrab', 'PIL.ImageTk', 'pynput', 'pynput.mouse', 'pynput.keyboard'],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -35,17 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='NONE',
 )
-
-# Mac için .app bundle oluştur
-if sys.platform == 'darwin':
-    app = BUNDLE(
-        exe,
-        name='EdafDesk.app',
-        icon=None,
-        bundle_identifier='com.edaf.edafdesk',
-        info_plist={
-            'NSPrincipalClass': 'NSApplication',
-            'NSHighResolutionCapable': 'True',
-        },
-    )
