@@ -4,7 +4,7 @@ Relay Client - İnternet üzerinden bağlanan taraf
 
 import socket
 import threading
-import pickle
+import base64
 import struct
 import tkinter as tk
 from PIL import Image, ImageTk
@@ -101,8 +101,29 @@ class RelayClient:
                         break
                     data += packet
                 
-                # Pickle'dan çıkar
-                jpeg_data = pickle.loads(data)
+                # Güvenli paket parse et
+                try:
+                    packet_str = data.decode('utf-8', errors='ignore')
+                    
+                    # EDAF paket formatını kontrol et
+                    if not packet_str.startswith('EDAF_START|') or not packet_str.endswith('|EDAF_END'):
+                        self.log("⚠️ Geçersiz paket formatı, frame atlanıyor")
+                        continue
+                    
+                    # Paket bileşenlerini ayır
+                    parts = packet_str.split('|')
+                    if len(parts) != 4 or parts[0] != 'EDAF_START' or parts[3] != 'EDAF_END':
+                        self.log("⚠️ Paket yapısı hatalı, frame atlanıyor")
+                        continue
+                    
+                    encoded_data = parts[2]
+                    
+                    # Base64 decode et
+                    jpeg_data = base64.b64decode(encoded_data.encode('utf-8'))
+                    
+                except (ValueError, IndexError, base64.binascii.Error) as e:
+                    self.log(f"⚠️ Paket parse hatası: {str(e)[:50]}...")
+                    continue
                 
                 # Görüntüle
                 self.display_screen(jpeg_data)
@@ -192,7 +213,12 @@ class RelayClient:
     def send_input(self, command):
         """Input komutunu gönder"""
         try:
-            data = pickle.dumps(command)
+            import json
+            # JSON kullan - daha güvenli
+            json_str = json.dumps(command)
+            # Komut paket formatı
+            packet = f"CMD_START|{len(json_str)}|{json_str}|CMD_END"
+            data = packet.encode('utf-8')
             self.socket.send(data)
         except Exception as e:
             if self.running:

@@ -5,7 +5,7 @@ Relay Host - İnternet üzerinden ekran paylaşan taraf
 import socket
 import threading
 import time
-import pickle
+import json
 import struct
 from screen_capture import ScreenCapture
 from input_control import InputController
@@ -86,15 +86,47 @@ class RelayHost:
     
     def receive_input(self):
         """Client'tan input komutlarını al"""
+        buffer = b""  # Veri biriktirme buffer'ı
         while self.running:
             try:
                 data = self.socket.recv(4096)
                 if not data:
                     break
                 
-                # Input komutunu işle
-                command = pickle.loads(data)
-                self.handle_input(command)
+                buffer += data
+                
+                # Komut paketlerini işle
+                while b"CMD_START|" in buffer and b"|CMD_END" in buffer:
+                    try:
+                        # Paket başlangıcını bul
+                        start_idx = buffer.find(b"CMD_START|")
+                        if start_idx == -1:
+                            break
+                        
+                        # Paket sonunu bul
+                        end_idx = buffer.find(b"|CMD_END", start_idx)
+                        if end_idx == -1:
+                            break
+                        
+                        # Paketi çıkar
+                        packet_data = buffer[start_idx:end_idx + 8]  # |CMD_END = 8 byte
+                        buffer = buffer[end_idx + 8:]  # Kalan veriyi buffer'da tut
+                        
+                        # Paketi parse et
+                        packet_str = packet_data.decode('utf-8', errors='ignore')
+                        parts = packet_str.split('|')
+                        
+                        if len(parts) == 4 and parts[0] == 'CMD_START' and parts[3] == 'CMD_END':
+                            command_json = parts[2]
+                            command = json.loads(command_json)
+                            self.handle_input(command)
+                        
+                    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
+                        print(f"⚠️ Komut parse hatası: {str(e)}")
+                        break
+                    except Exception as e:
+                        print(f"⚠️ Komut işleme hatası: {str(e)}")
+                        break
                 
             except Exception as e:
                 if self.running:
