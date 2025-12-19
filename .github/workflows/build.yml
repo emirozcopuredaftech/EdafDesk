@@ -2,6 +2,7 @@ name: Build EdafDesk for Windows and Mac
 
 on:
   push:
+    branches: [ main ]
     tags:
       - 'v*'
   workflow_dispatch:
