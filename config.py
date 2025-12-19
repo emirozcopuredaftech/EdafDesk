@@ -9,7 +9,13 @@ COMPRESSION_QUALITY = 60  # JPEG kalitesi (0-100)
 FPS = 10  # Saniyede kare sayısı (daha smooth) - azaltıldı flicker için
 
 # Relay Sunucu Ayarları
-RELAY_SERVER = "92.5.52.157"  # Oracle Cloud relay sunucu adresi
+# Ana relay sunucu çalışmıyorsa alternatifler
+RELAY_SERVERS = [
+    "92.5.52.157",      # Oracle Cloud relay (ana)
+    "147.182.128.15",   # DigitalOcean backup
+    "178.128.221.23",   # Backup relay 2
+]
+RELAY_SERVER = RELAY_SERVERS[0]  # Varsayılan
 RELAY_PORT = 9999
 
 # Güvenlik

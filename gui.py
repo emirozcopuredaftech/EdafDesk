@@ -360,23 +360,53 @@ class RemoteDesktopGUI:
             self.log(f"❌ Hata: {str(e)}")
     
     def start_relay_host(self):
-        """Relay host başlat"""
-        try:
+        """Relay host başlat - fallback ile"""
+        def try_relay_servers():
             relay_server = self.relay_server_entry.get()
-            self.relay_host = RelayHost(relay_server, RELAY_PORT, self.log)
             
-            def start_and_get_id():
-                success = self.relay_host.start()
-                if success:
-                    self.root.after(0, lambda: self.start_host_btn.config(state=tk.DISABLED))
-                    self.root.after(0, lambda: self.stop_host_btn.config(state=tk.NORMAL))
+            # Önce kullanıcının girdiği sunucuyu dene
+            servers_to_try = [relay_server] + [s for s in RELAY_SERVERS if s != relay_server]
             
-            host_thread = threading.Thread(target=start_and_get_id, daemon=True)
-            host_thread.start()
+            for server in servers_to_try:
+                try:
+                    self.log(f"🔄 {server} sunucusuna bağlanılıyor...")
+                    
+                    # Sunucuyu test et
+                    import socket
+                    test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    test_socket.settimeout(5)
+                    result = test_socket.connect_ex((server, RELAY_PORT))
+                    test_socket.close()
+                    
+                    if result != 0:
+                        self.log(f"❌ {server} sunucusu yanıt vermiyor")
+                        continue
+                    
+                    self.log(f"✅ {server} sunucusu aktif")
+                    self.relay_host = RelayHost(server, RELAY_PORT, self.log)
+                    
+                    success = self.relay_host.start()
+                    if success:
+                        self.root.after(0, lambda: self.start_host_btn.config(state=tk.DISABLED))
+                        self.root.after(0, lambda: self.stop_host_btn.config(state=tk.NORMAL))
+                        self.log(f"🎯 Relay host başarıyla {server} üzerinden başlatıldı!")
+                        return
+                    else:
+                        self.log(f"⚠️ {server} ile bağlantı kurulamadı")
+                        
+                except Exception as e:
+                    self.log(f"⚠️ {server} hatası: {str(e)}")
+                    continue
             
-        except Exception as e:
-            messagebox.showerror("Hata", f"Relay host başlatılamadı: {str(e)}")
-            self.log(f"❌ Hata: {str(e)}")
+            # Hiçbiri çalışmıyorsa
+            self.log("❌ Hiçbir relay sunucusu kullanılabilir değil!")
+            self.log("💡 Çözüm önerileri:")
+            self.log("   • Lokal ağ modunu kullanın")
+            self.log("   • Internet bağlantınızı kontrol edin")
+            self.log("   • Güvenlik duvarı ayarlarını kontrol edin")
+            
+        host_thread = threading.Thread(target=try_relay_servers, daemon=True)
+        host_thread.start()
     
     def approval_dialog(self, ip_address):
         """Bağlantı onay dialogu"""
@@ -442,27 +472,54 @@ class RemoteDesktopGUI:
             self.log(f"❌ Hata: {str(e)}")
     
     def connect_relay(self):
-        """Relay üzerinden bağlan"""
-        try:
+        """Relay üzerinden bağlan - fallback ile"""
+        def try_connect_relay():
             host_id = self.target_ip_entry.get()
             relay_server = self.relay_server_entry.get()
             
-            self.relay_client = RelayClient(host_id, relay_server, RELAY_PORT, self.log)
+            # Önce kullanıcının girdiği sunucuyu dene
+            servers_to_try = [relay_server] + [s for s in RELAY_SERVERS if s != relay_server]
             
-            def connect_thread():
-                success = self.relay_client.connect()
-                if success:
-                    self.root.after(0, lambda: self.connect_btn.config(state=tk.DISABLED))
-                    self.root.after(0, lambda: self.disconnect_btn.config(state=tk.NORMAL))
+            for server in servers_to_try:
+                try:
+                    self.log(f"🔄 {server} üzerinden Host ID {host_id} ile bağlanılıyor...")
+                    
+                    # Sunucuyu test et
+                    import socket
+                    test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    test_socket.settimeout(5)
+                    result = test_socket.connect_ex((server, RELAY_PORT))
+                    test_socket.close()
+                    
+                    if result != 0:
+                        self.log(f"❌ {server} sunucusu yanıt vermiyor")
+                        continue
+                    
+                    self.log(f"✅ {server} sunucusu aktif")
+                    self.relay_client = RelayClient(host_id, server, RELAY_PORT, self.log)
+                    
+                    success = self.relay_client.connect()
+                    if success:
+                        self.root.after(0, lambda: self.connect_btn.config(state=tk.DISABLED))
+                        self.root.after(0, lambda: self.disconnect_btn.config(state=tk.NORMAL))
+                        self.log(f"🎯 {server} üzerinden başarıyla bağlanıldı!")
+                        return
+                    else:
+                        self.log(f"⚠️ {server} üzerinden bağlantı kurulamadı")
+                        
+                except Exception as e:
+                    self.log(f"⚠️ {server} hatası: {str(e)}")
+                    continue
             
-            client_thread = threading.Thread(target=connect_thread, daemon=True)
-            client_thread.start()
+            # Hiçbiri çalışmıyorsa
+            self.log("❌ Hiçbir relay sunucusu üzerinden bağlantı kurulamadı!")
+            self.log("💡 Çözüm önerileri:")
+            self.log("   • Lokal ağ modunu kullanın")
+            self.log("   • Host ID'nin doğru olduğundan emin olun")
+            self.log("   • Internet bağlantınızı kontrol edin")
             
-            self.log(f"🔗 Host ID {host_id} ile bağlanılıyor...")
-            
-        except Exception as e:
-            messagebox.showerror("Hata", f"Bağlantı başlatılamadı: {str(e)}")
-            self.log(f"❌ Hata: {str(e)}")
+        client_thread = threading.Thread(target=try_connect_relay, daemon=True)
+        client_thread.start()
     
     def disconnect_from_host(self):
         """Bağlantıyı kes"""
