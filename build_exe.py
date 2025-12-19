@@ -19,9 +19,25 @@ def build_exe():
         '--name=EdafDesk',  # EXE adı
         '--icon=NONE',  # İkon (varsa eklenebilir)
         '--add-data=config.py;.',  # Config dosyasını ekle
+        # Tüm modüllerimizi hidden import olarak ekle
+        '--hidden-import=client',
+        '--hidden-import=host',
+        '--hidden-import=config',
+        '--hidden-import=gui',
+        '--hidden-import=screen_capture',
+        '--hidden-import=input_control',
+        '--hidden-import=relay_client',
+        '--hidden-import=relay_host',
+        '--hidden-import=relay_server',
+        '--hidden-import=favorites',
         '--hidden-import=PIL._tkinter_finder',  # Gizli importlar
         '--hidden-import=pynput.keyboard._win32',
         '--hidden-import=pynput.mouse._win32',
+        '--hidden-import=tkinter',
+        '--hidden-import=tkinter.ttk',
+        '--hidden-import=tkinter.messagebox',
+        '--hidden-import=tkinter.scrolledtext',
+        '--hidden-import=tkinter.simpledialog',
         '--noconsole',  # Console gizle
         'main.py'
     ]
