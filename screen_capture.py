@@ -3,7 +3,7 @@ Ekran Yakalama Modülü
 """
 
 import io
-import pickle
+import base64
 import platform
 import subprocess
 import tempfile
@@ -86,7 +86,7 @@ class ScreenCapture:
             return None
         
     def capture(self):
-        """Ekran görüntüsü yakala ve JPEG formatında döndür"""
+        """Ekran görüntüsü yakala ve güvenli formatta döndür"""
         try:
             if self.is_mac:
                 jpeg_data = self._capture_mac_native()
@@ -103,7 +103,14 @@ class ScreenCapture:
                     test_img = io.BytesIO(jpeg_data)
                     from PIL import Image
                     Image.open(test_img).verify()  # JPEG geçerliliğini kontrol et
-                    return pickle.dumps(jpeg_data)
+                    
+                    # Base64 ile encode et - daha güvenli
+                    encoded_data = base64.b64encode(jpeg_data).decode('utf-8')
+                    
+                    # Güvenli paket formatı: HEADER|SIZE|DATA|FOOTER
+                    packet = f"EDAF_START|{len(encoded_data)}|{encoded_data}|EDAF_END"
+                    return packet.encode('utf-8')
+                    
                 except Exception as e:
                     print(f"JPEG doğrulama hatası: {str(e)}")
                     return None

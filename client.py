@@ -4,7 +4,7 @@ Client Modülü - Uzaktan Bağlanan Taraf
 
 import socket
 import threading
-import pickle
+import base64
 import zlib
 import tkinter as tk
 from PIL import Image, ImageTk
@@ -103,23 +103,43 @@ class ClientConnection:
                 try:
                     screen_data = zlib.decompress(compressed_data)
                     
-                    # Veri bütünlüğünü kontrol et
-                    if len(screen_data) < 10:  # Çok küçükse geçersiz
-                        continue
-                        
-                    image_data = pickle.loads(screen_data)
+                    # Güvenli paket formatını parse et
+                    packet_str = screen_data.decode('utf-8', errors='ignore')
                     
-                    # Veri tipini kontrol et
-                    if not isinstance(image_data, bytes):
+                    # EDAF paket formatını kontrol et
+                    if not packet_str.startswith('EDAF_START|') or not packet_str.endswith('|EDAF_END'):
+                        self.log("⚠️ Geçersiz paket formatı, frame atlanıyor")
                         continue
+                    
+                    # Paket bileşenlerini ayır
+                    try:
+                        parts = packet_str.split('|')
+                        if len(parts) != 4 or parts[0] != 'EDAF_START' or parts[3] != 'EDAF_END':
+                            self.log("⚠️ Paket yapısı hatalı, frame atlanıyor")
+                            continue
                         
+                        data_size = int(parts[1])
+                        encoded_data = parts[2]
+                        
+                        # Boyut kontrolü
+                        if len(encoded_data) != data_size:
+                            self.log("⚠️ Veri boyutu uyumsuz, frame atlanıyor")
+                            continue
+                        
+                        # Base64 decode et
+                        image_data = base64.b64decode(encoded_data.encode('utf-8'))
+                        
+                    except (ValueError, IndexError) as e:
+                        self.log(f"⚠️ Paket parse hatası: {str(e)[:50]}...")
+                        continue
+                    
                     # PIL Image'e dönüştür
                     image = Image.open(io.BytesIO(image_data))
                     
                     # Canvas'a göster
                     self.display_image(image)
                     
-                except (pickle.UnpicklingError, zlib.error, ValueError) as e:
+                except (zlib.error, UnicodeDecodeError, base64.binascii.Error) as e:
                     self.log(f"⚠️ Veri hatası, frame atlanıyor: {str(e)[:50]}...")
                     continue
                 except Exception as e:
@@ -301,9 +321,14 @@ class ClientConnection:
     def send_command(self, command):
         """Komut gönder"""
         try:
-            data = pickle.dumps(command)
-            self.socket.sendall(data)
-        except:
+            import json
+            # JSON kullan - daha güvenli
+            json_str = json.dumps(command)
+            # Komut paket formatı
+            packet = f"CMD_START|{len(json_str)}|{json_str}|CMD_END"
+            self.socket.sendall(packet.encode('utf-8'))
+        except Exception as e:
+            print(f"⚠️ Komut gönderme hatası: {str(e)}")
             pass
     
     def disconnect(self):

@@ -5,7 +5,7 @@ Host Sunucu Modülü - Ekranı Paylaşan Taraf
 import socket
 import threading
 import time
-import pickle
+import json
 import zlib
 from screen_capture import ScreenCapture
 from input_control import InputController
@@ -98,25 +98,50 @@ class HostServer:
         
         # Komut alma loop'u
         try:
+            buffer = b""  # Veri biriktirme buffer'ı
             while self.running:
                 try:
-                    self.socket.settimeout(5.0)  # Timeout ayarla
+                    client_socket.settimeout(5.0)  # Timeout ayarla
                     data = client_socket.recv(BUFFER_SIZE)
                     if not data:
                         break
                     
-                    # Client'tan gelen komutları işle (klavye/fare)
-                    try:
-                        print(f"📦 Veri alındı, boyut: {len(data)}")
-                        command = pickle.loads(data)
-                        print(f"📋 Deserialize edildi: {command}")
-                        self.process_command(command)
-                    except (pickle.UnpicklingError, ValueError) as e:
-                        print(f"⚠️ Komut deserialize hatası: {str(e)}")
-                        continue
-                    except Exception as e:
-                        print(f"⚠️ Komut işleme hatası: {str(e)}")
-                        continue
+                    buffer += data
+                    
+                    # Komut paketlerini işle
+                    while b"CMD_START|" in buffer and b"|CMD_END" in buffer:
+                        try:
+                            # Paket başlangıcını bul
+                            start_idx = buffer.find(b"CMD_START|")
+                            if start_idx == -1:
+                                break
+                            
+                            # Paket sonunu bul
+                            end_idx = buffer.find(b"|CMD_END", start_idx)
+                            if end_idx == -1:
+                                break
+                            
+                            # Paketi çıkar
+                            packet_data = buffer[start_idx:end_idx + 8]  # |CMD_END = 8 byte
+                            buffer = buffer[end_idx + 8:]  # Kalan veriyi buffer'da tut
+                            
+                            # Paketi parse et
+                            packet_str = packet_data.decode('utf-8', errors='ignore')
+                            parts = packet_str.split('|')
+                            
+                            if len(parts) == 4 and parts[0] == 'CMD_START' and parts[3] == 'CMD_END':
+                                import json
+                                command_json = parts[2]
+                                command = json.loads(command_json)
+                                print(f"📋 Komut alındı: {command}")
+                                self.process_command(command)
+                            
+                        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
+                            print(f"⚠️ Komut parse hatası: {str(e)}")
+                            break
+                        except Exception as e:
+                            print(f"⚠️ Komut işleme hatası: {str(e)}")
+                            break
                         
                 except socket.timeout:
                     continue  # Timeout normale, devam et
