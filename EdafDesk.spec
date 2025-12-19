@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+import sys
 
 a = Analysis(
     ['main.py'],
@@ -37,3 +37,16 @@ exe = EXE(
     entitlements_file=None,
     icon='NONE',
 )
+
+# macOS için .app bundle oluştur
+if sys.platform == 'darwin':
+    app = BUNDLE(
+        exe,
+        name='EdafDesk.app',
+        icon=None,
+        bundle_identifier='com.edaf.edafdesk',
+        info_plist={
+            'NSPrincipalClass': 'NSApplication',
+            'NSHighResolutionCapable': 'True',
+        },
+    )
