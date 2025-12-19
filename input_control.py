@@ -28,6 +28,10 @@ class InputController:
         except Exception as e:
             print(f"Mouse hareket hatası: {str(e)}")
     
+    def mouse_move(self, rel_x, rel_y):
+        """Mouse'u hareket ettir - alias for move_mouse"""
+        self.move_mouse(rel_x, rel_y)
+    
     def click_mouse(self, button='left'):
         """Mouse tıklaması yap"""
         try:

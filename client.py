@@ -104,27 +104,38 @@ class ClientConnection:
                     screen_data = zlib.decompress(compressed_data)
                     
                     # Güvenli paket formatını parse et
-                    packet_str = screen_data.decode('utf-8', errors='ignore')
+                    try:
+                        packet_str = screen_data.decode('utf-8', errors='ignore')
+                    except UnicodeDecodeError:
+                        # Eğer UTF-8 değilse, latin-1 dene
+                        packet_str = screen_data.decode('latin-1', errors='ignore')
                     
-                    # EDAF paket formatını kontrol et
-                    if not packet_str.startswith('EDAF_START|') or not packet_str.endswith('|EDAF_END'):
-                        self.log("⚠️ Geçersiz paket formatı, frame atlanıyor")
+                    # EDAF paket formatını kontrol et - daha esnek kontrol
+                    if 'EDAF_START|' not in packet_str or '|EDAF_END' not in packet_str:
+                        # Debug bilgisi
+                        if len(packet_str) > 0:
+                            self.log(f"⚠️ Paket format hatası. İlk 50 karakter: {packet_str[:50]}")
                         continue
                     
                     # Paket bileşenlerini ayır
                     try:
-                        parts = packet_str.split('|')
+                        # EDAF_START pozisyonunu bul
+                        start_pos = packet_str.find('EDAF_START|')
+                        end_pos = packet_str.find('|EDAF_END')
+                        
+                        if start_pos == -1 or end_pos == -1:
+                            continue
+                        
+                        # Paket içeriğini çıkar
+                        packet_content = packet_str[start_pos:end_pos + 9]  # +9 for |EDAF_END
+                        parts = packet_content.split('|')
+                        
                         if len(parts) != 4 or parts[0] != 'EDAF_START' or parts[3] != 'EDAF_END':
-                            self.log("⚠️ Paket yapısı hatalı, frame atlanıyor")
+                            self.log(f"⚠️ Paket yapısı hatalı. Parts: {len(parts)}")
                             continue
                         
                         data_size = int(parts[1])
                         encoded_data = parts[2]
-                        
-                        # Boyut kontrolü
-                        if len(encoded_data) != data_size:
-                            self.log("⚠️ Veri boyutu uyumsuz, frame atlanıyor")
-                            continue
                         
                         # Base64 decode et
                         image_data = base64.b64decode(encoded_data.encode('utf-8'))
@@ -139,7 +150,7 @@ class ClientConnection:
                     # Canvas'a göster
                     self.display_image(image)
                     
-                except (zlib.error, UnicodeDecodeError, base64.binascii.Error) as e:
+                except (zlib.error, base64.binascii.Error) as e:
                     self.log(f"⚠️ Veri hatası, frame atlanıyor: {str(e)[:50]}...")
                     continue
                 except Exception as e:
