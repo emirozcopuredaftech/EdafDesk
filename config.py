@@ -6,7 +6,7 @@ Yapılandırma Ayarları
 DEFAULT_PORT = 5555
 BUFFER_SIZE = 65536
 COMPRESSION_QUALITY = 60  # JPEG kalitesi (0-100)
-FPS = 15  # Saniyede kare sayısı (daha smooth)
+FPS = 10  # Saniyede kare sayısı (daha smooth) - azaltıldı flicker için
 
 # Relay Sunucu Ayarları
 RELAY_SERVER = "92.5.52.157"  # Oracle Cloud relay sunucu adresi

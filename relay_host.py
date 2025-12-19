@@ -139,13 +139,18 @@ class RelayHost:
             cmd_type = command.get('type')
             
             if cmd_type == 'mouse_move':
-                self.input_controller.mouse_move(command['x'], command['y'])
+                x, y = command.get('x', 0), command.get('y', 0)
+                self.input_controller.move_mouse(x, y)
             elif cmd_type == 'mouse_click':
-                self.input_controller.mouse_click(command['button'], command['pressed'])
-            elif cmd_type == 'mouse_scroll':
-                self.input_controller.mouse_scroll(command['dx'], command['dy'])
+                button = command.get('button', 'left')
+                # Pozisyon bilgisi varsa önce mouse'u taşı
+                if 'x' in command and 'y' in command:
+                    x, y = command.get('x'), command.get('y')
+                    self.input_controller.move_mouse(x, y)
+                self.input_controller.click_mouse(button)
             elif cmd_type == 'key_press':
-                self.input_controller.key_press(command['key'], command['pressed'])
+                key = command.get('key', '')
+                self.input_controller.press_key(key)
                 
         except Exception as e:
             self.log(f"⚠️ Input işleme hatası: {str(e)}")

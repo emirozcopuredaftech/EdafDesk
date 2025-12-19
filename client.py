@@ -203,10 +203,25 @@ class ClientConnection:
             # PhotoImage'e dönüştür
             photo = ImageTk.PhotoImage(image)
             
-            # Canvas'ı güncelle (delete yerine itemconfig kullan - daha smooth)
-            if not hasattr(self, 'image_id'):
-                self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW, image=photo)
-            else:
+            # Canvas'ı güncelle - flicker'ı önlemek için tek seferde güncelle
+            def update_canvas():
+                try:
+                    if not hasattr(self, 'image_id') or not self.canvas.find_all():
+                        self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW, image=photo)
+                    else:
+                        self.canvas.itemconfig(self.image_id, image=photo)
+                    
+                    # Reference'ı sakla (garbage collection için)
+                    self.current_photo = photo
+                    
+                except Exception as e:
+                    print(f"Canvas güncelleme hatası: {str(e)}")
+            
+            # Ana thread'de çalıştır
+            self.screen_window.after(0, update_canvas)
+            
+        except Exception as e:
+            print(f"Görüntü gösterme hatası: {str(e)}")
                 self.canvas.itemconfig(self.image_id, image=photo)
             
             self.canvas.image = photo  # Referansı sakla

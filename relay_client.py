@@ -161,21 +161,30 @@ class RelayClient:
             canvas_height = self.canvas.winfo_height()
             
             if canvas_width > 1 and canvas_height > 1:
-                img.thumbnail((canvas_width, canvas_height), Image.LANCZOS)
+                img = img.resize((canvas_width, canvas_height), Image.LANCZOS)
             
             photo = ImageTk.PhotoImage(img)
             
-            self.canvas.delete("all")
-            self.canvas.create_image(
-                canvas_width // 2,
-                canvas_height // 2,
-                image=photo
-            )
+            # Flicker'ı önlemek için tek seferde güncelle
+            def update_canvas():
+                try:
+                    if not hasattr(self, 'image_id') or not self.canvas.find_all():
+                        self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW, image=photo)
+                    else:
+                        self.canvas.itemconfig(self.image_id, image=photo)
+                    
+                    # Reference'ı sakla (garbage collection için)
+                    self.current_photo = photo
+                    
+                except Exception as e:
+                    print(f"Canvas güncelleme hatası: {str(e)}")
             
-            self.canvas.image = photo
+            # Ana thread'de çalıştır
+            if hasattr(self, 'screen_window') and self.screen_window:
+                self.screen_window.after(0, update_canvas)
             
         except Exception as e:
-            pass
+            print(f"Görüntü gösterme hatası: {str(e)}")
     
     def on_mouse_move(self, event):
         """Mouse hareketi"""

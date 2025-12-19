@@ -32,6 +32,17 @@ class InputController:
         """Mouse'u hareket ettir - alias for move_mouse"""
         self.move_mouse(rel_x, rel_y)
     
+    def mouse_click(self, button='left', x=None, y=None):
+        """Mouse tıklaması yap - compatible method"""
+        try:
+            # Eğer pozisyon verilmişse önce oraya git
+            if x is not None and y is not None:
+                self.move_mouse(x, y)
+            
+            self.click_mouse(button)
+        except Exception as e:
+            print(f"❌ Mouse click hatası: {str(e)}")
+    
     def click_mouse(self, button='left'):
         """Mouse tıklaması yap"""
         try:
